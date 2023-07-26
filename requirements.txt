@@ -1,0 +1,9 @@
+tqdm==4.56.0
+joblib==1.2.0
+scipy
+pandas
+scikit-learn
+scikit-image
+nilearn
+fracridge
+matplotlib

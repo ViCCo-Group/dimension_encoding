@@ -1,0 +1,66 @@
+metallic/artificial
+food-related
+animal-related
+textile
+plant-related
+house-related/furnishing-related
+valuable/precious
+transportation-/movement-related
+body-/people-related
+wood-related/brown
+electronics / technology
+colorful / playful
+outdoors
+circular / round
+paper-related / flat
+hobby-related / game-related / playing-related
+tools-related / handheld / elongated
+fluid-related / drink-related
+water-related
+oriented / many things
+powdery / earth-related / waste-related
+white
+coarse-scale pattern / many things
+red
+long / thin
+weapon-related / war-related / dangerous
+black
+household-related
+feminine (stereotypical)
+body part-related
+tubular
+music-related / hearing-related / hobby-related / loud
+grid-related / grating-related
+repetitive / spiky
+construction-related / craftsmanship-related / housework-related
+spherical / voluminous
+string-related / stringy / curved
+seating / standing / lying-related
+flying-related / sky-related
+bug-related / non-mammalian / disgusting
+transparent / shiny / crystalline
+sand colored
+green
+bathroom-related / wetness-related
+yellow
+heat-related / fire-related / light-related
+beams-related  mesh-related
+foot-related / walking-related
+box-related / container
+stick-shaped / container
+head-related
+upright / elongated and volumous
+pointed / spiky
+child-related / toy-related / cute
+farm-related / historical
+seeing-related
+medicine-related / health-related
+sweet / dessert-related
+orange
+thin / flat / wrapping
+cylindrical / conical / cushioning
+coldness-related / winter-related
+measurement-related / numbers-related
+fluffy / soft
+masculine (stereotypical)
+fine-grained pattern
