@@ -11,13 +11,13 @@ def parse_arguments():
         "--bidsroot",
         type=str,
         help="path to bids root directory",
-        default="/LOCAL/ocontier/thingsmri/bids/",
+        default="../data/bids/",
     )
     parser.add_argument(
         "--clip66dir",
         type=str,
         help="path to clip-predicted behavioral embeddings (66d)",
-        default="/LOCAL/ocontier/thingsmri/bids/code/external_libraries/66d",
+        default="../data/66d",
     )
     parser.add_argument(
         "--emb_f",

@@ -8,10 +8,7 @@ from dimension_encoding.TopObjects import TopObjectsProfile
 from dimension_encoding.utils import get_all_roi_files, load_clip66_preds
 
 
-def load_pmod_betas_img(
-    sub="01",
-    pmod_basedir="/Users/olivercontier/bigfri/scratch/bids/derivatives/pmod_cv_clip_66d",
-):
+def load_pmod_betas_img(sub,pmod_basedir):
     fs = [
         pjoin(pmod_basedir, f"sub-{sub}", f"beta_regi-{i + 1}_regname-{i}.nii.gz")
         for i in range(66)
@@ -25,19 +22,25 @@ def parse_arguments():
         "--bidsroot",
         type=str,
         help="path to bids root directory",
-        default="/LOCAL/ocontier/thingsmri/bids/",
+        default="../data/bids",
     )
     parser.add_argument(
         "--outdir",
         type=str,
         help="path to output directory",
-        default="/LOCAL/ocontier/thingsmri/bids/derivatives/varpart_cat_vs_dim_CV",
+        default="../results/topobjects_66d",
     )
     parser.add_argument(
         "--clip66dir",
         type=str,
         help="path to clip-predicted behavioral embeddings (66d)",
-        default="/LOCAL/ocontier/thingsmri/bids/code/external_libraries/66d",
+        default="../data/66d",
+    )
+    parser.add_argument(
+        "--imagedir",
+        type=str,
+        help="path to things image database",
+        default="../data/things_images",
     )
     args = parser.parse_args()
     return args
@@ -46,8 +49,9 @@ def parse_arguments():
 def main(args):
     subs = ["01", "02", "03"]
     roi_betas_subs = {}
+    pmod_basedir = pjoin(args.bidsroot, "derivatives", "pmod_cv_clip_66d")
     for sub in tqdm(subs, desc="Getting betas for each subject"):
-        betas_img = load_pmod_betas_img(sub)
+        betas_img = load_pmod_betas_img(sub, pmod_basedir)
         rois_dict = get_all_roi_files(
             sub,
             args.bidsroot,
@@ -80,8 +84,7 @@ def main(args):
         fnames_with_folder_structure=True,
     )
     # get full path to images, only complete THINGS image set
-    imagedir = "/Users/olivercontier/things_images"
-    filenames = np.array([pjoin(imagedir, fn.replace("./", "")) for fn in filenames])
+    filenames = np.array([pjoin(args.imagedir, fn.replace("./", "")) for fn in filenames])
     # define out dirs for train and test
     for roiname, roibetas in avg_roibetas.items():
         topobjects = TopObjectsProfile(roiname, roibetas, embedding, filenames, args.outdir)

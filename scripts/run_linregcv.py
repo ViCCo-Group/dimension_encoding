@@ -20,6 +20,7 @@ def parse_arguments():
         "--bidsroot",
         type=str,
         help="path to bids root directory",
+        default="../data/bids",
     )
     parser.add_argument(
         "--clip66dir", type=str, help="path to object dimensions", default="./data/66d"
@@ -27,13 +28,13 @@ def parse_arguments():
     parser.add_argument(
         "--brainmask",
         type=str,
-        help="path to brain mask volume",
+        help="path to brain mask volume for this subject",
     )
     parser.add_argument(
         "--outdir",
         type=str,
         help="path to output directory",
-        default="./clippreds_on_betas_linereg_cvperm",
+        default="../results/clippreds_on_betas_linereg_cvperm",
     )
     args = parser.parse_args()
     return args

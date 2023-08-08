@@ -107,7 +107,7 @@ def parse_arguments():
         "--bidsroot",
         type=str,
         help="path to bids root directory",
-        default="/LOCAL/ocontier/thingsmri/bids/",
+        default="../data/bids",
     )
     parser.add_argument(
         "--adjust_y",
@@ -125,25 +125,25 @@ def parse_arguments():
         "--outdir",
         type=str,
         help="path to output directory",
-        default="/LOCAL/ocontier/thingsmri/bids/derivatives/varpart_cat_vs_dim_CV",
+        default="../results/varpart_cat_vs_dim_CV",
     )
     parser.add_argument(
         "--l2s_tsv",
         type=str,
         help="path to file containing secondary object labels",
-        default="/LOCAL/ocontier/thingsmri/bids/code/external_libraries/matchlabels/results/output_final.tsv",
+        default="../data/matchlabels/results/output_final.tsv",
     )
     parser.add_argument(
         "--clip66dir",
         type=str,
         help="path to clip-predicted behavioral embeddings (66d)",
-        default="/LOCAL/ocontier/thingsmri/bids/code/external_libraries/66d",
+        default="../data/66d",
     )
     parser.add_argument(
         "--cat_tsv",
         type=str,
         help="path to tsv containing high-level category labels",
-        default="/LOCAL/ocontier/thingsmri/bids/code/external_libraries/Categories_final_20200131_fixedUniqueID.tsv",
+        default="../data/Categories_final_20200131_fixedUniqueID.tsv",
     )
     args = parser.parse_args()
     return args
