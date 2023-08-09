@@ -166,12 +166,12 @@ def vcorrcoef(X, y):
     return r
 
 
-def get_prf_rois(sub, bidsroot, prf_derivname) -> dict:
+def get_prf_rois(sub, prf_basedir) -> dict:
     """
     Get file names of early visual ROIs deliniated with neuropythy.
     """
     rois = {}
-    prf_dir = pjoin(bidsroot, "derivatives", prf_derivname, f"sub-{sub}")
+    prf_dir = pjoin(prf_basedir, f"sub-{sub}")
     for va in range(1, 4):
         rois[f"V{va}"] = pjoin(prf_dir, f"resampled_va-{va}_interp-nn.nii.gz")
     rois["hV4"] = pjoin(prf_dir, f"resampled_va-4_interp-nn.nii.gz")
@@ -186,11 +186,11 @@ def get_prf_rois(sub, bidsroot, prf_derivname) -> dict:
     return rois
 
 
-def get_category_rois(sub, bidsroot, julian_derivname) -> dict:
+def get_category_rois(sub, floc_basedir) -> dict:
     """
     Get file names of category seletive ROIS determined with a GLM on the localizer data.
     """
-    julian_dir = pjoin(bidsroot, "derivatives", julian_derivname, f"sub-{sub}")
+    julian_dir = pjoin(floc_basedir, f"sub-{sub}")
     rois = {}
     roinames = ["EBA", "FFA", "OFA", "STS", "PPA", "RSC", "TOS", "VWFA"]
     hemispheric_rois = []
@@ -212,13 +212,13 @@ def get_category_rois(sub, bidsroot, julian_derivname) -> dict:
     return rois
 
 
-def get_all_roi_files(sub, bidsroot, prf_derivname, julian_derivname) -> dict:
+def get_all_roi_files(sub, prf_roidir, floc_roidir) -> dict:
     """
     Returns a dict with roinames as keys and file names as values.
     category ROIs are separate per hemisphere, PRF rois are bihemispheric.
     """
-    prf_rois = get_prf_rois(sub, bidsroot, prf_derivname)
-    cat_rois = get_category_rois(sub, bidsroot, julian_derivname)
+    prf_rois = get_prf_rois(sub, prf_roidir)
+    cat_rois = get_category_rois(sub, floc_roidir)
     # combine two dictionaries
     rois = {**prf_rois, **cat_rois}
     return rois

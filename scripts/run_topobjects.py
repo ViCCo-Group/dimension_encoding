@@ -42,6 +42,18 @@ def parse_arguments():
         help="path to things image database",
         default="../data/things_images",
     )
+    parser.add_argument(
+        "--prf_roidir",
+        type=str,
+        help="path to directory containing prf roi files",
+        default="../data/prf",
+    )
+    parser.add_argument(
+        "--floc_roidir",
+        type=str,
+        help="path to directory containign fLOC roi files",
+        default="../data/category_localizer",
+    )
     args = parser.parse_args()
     return args
 
@@ -55,8 +67,8 @@ def main(args):
         rois_dict = get_all_roi_files(
             sub,
             args.bidsroot,
-            "prf_neuropythy/fixated",
-            "julian_parcels/julian_parcels_edited",
+            args.prf_roidir,
+            args.floc_roidir,
         )
         sub_roi_betas = {}
         for roiname, roifile in rois_dict.items():
