@@ -6,6 +6,7 @@ This repository contains the analysis code used for the paper "[Distributed repr
 ## Installation
 
 ```
+pip install --upgrade pip
 pip install virtualenv
 virtualenv venv
 source venv/bin/activate

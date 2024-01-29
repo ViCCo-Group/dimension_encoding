@@ -1,3 +1,5 @@
 .DS_Store
 dimension_encoding.egg-info
 venv/
+*brain_inds.nii.gz
+data/b5k

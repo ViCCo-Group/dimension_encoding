@@ -7,3 +7,4 @@ scikit-image
 nilearn
 fracridge
 matplotlib
+jupyter
