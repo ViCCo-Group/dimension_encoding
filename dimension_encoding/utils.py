@@ -222,3 +222,6 @@ def get_all_roi_files(sub, prf_roidir, floc_roidir) -> dict:
     # combine two dictionaries
     rois = {**prf_rois, **cat_rois}
     return rois
+
+def get_bmask(sub, bidsroot):
+    return pjoin(bidsroot, 'derivatives', 'brainmasks', f'sub-{sub}__space-T1w_brainmask.nii.gz')

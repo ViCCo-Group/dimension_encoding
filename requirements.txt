@@ -8,3 +8,5 @@ nilearn
 fracridge
 matplotlib
 jupyter
+pytables
+pybids
