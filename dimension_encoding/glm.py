@@ -1,5 +1,4 @@
 import os
-import warnings
 from os.path import join as pjoin
 import nibabel as nib
 import numpy as np
@@ -11,8 +10,9 @@ from nilearn.image import load_img, concat_imgs
 from nilearn.masking import apply_mask, intersect_masks, unmask
 from scipy.stats import zscore
 from sklearn.metrics import r2_score
-from sklearn.model_selection import KFold
+from sklearn.model_selection import train_test_split, KFold
 from sklearn.linear_model import LinearRegression
+from warnings import warn
 from tqdm import tqdm
 
 from dimension_encoding.dataset import ThingsMRIdataset
@@ -360,7 +360,7 @@ class PMod(THINGSGLM):
         for i, (name, onset) in enumerate(zip(names, onsets)):
             matches = self.dimnames_df.index[self.dimnames_df.uniqueID == name].tolist()
             if len(matches) == 0:
-                warnings.warn(
+                warn(
                     f"\nWARNING: Found {len(matches)} entries in spose dimensions table for event {name}, "
                     f"onset {onset}. Skipping\n"
                 )
@@ -413,10 +413,12 @@ class PMod(THINGSGLM):
                     )
             elif self.rescale_runwise_regressors == "zscore":
                 for dim_i in range(self.ndims):
-                    trials_df.loc[
-                        trials_df.trial_type == f"{dim_i}", "modulation"
-                    ] = zscore(
-                        trials_df.loc[trials_df.trial_type == f"{dim_i}", "modulation"]
+                    trials_df.loc[trials_df.trial_type == f"{dim_i}", "modulation"] = (
+                        zscore(
+                            trials_df.loc[
+                                trials_df.trial_type == f"{dim_i}", "modulation"
+                            ]
+                        )
                     )
             design_df = pd.concat([onset_df[trials_df.columns], trials_df])
         nuisance_df = get_nuisance_df(
@@ -614,18 +616,18 @@ class PModCV(PMod):
                         trials_df.trial_type == f"{dim_i}", "modulation"
                     ]
                     dim_amps_c = dim_amps - dim_amps.mean()
-                    trials_df.loc[
-                        trials_df.trial_type == f"{dim_i}", "modulation"
-                    ] = dim_amps_c
+                    trials_df.loc[trials_df.trial_type == f"{dim_i}", "modulation"] = (
+                        dim_amps_c
+                    )
             elif self.rescale_runwise_regressors == "zscore":
                 for dim_i in range(self.ndims):
                     dim_amps = trials_df.loc[
                         trials_df.trial_type == f"{dim_i}", "modulation"
                     ]
                     dim_amps_z = zscore(dim_amps)
-                    trials_df.loc[
-                        trials_df.trial_type == f"{dim_i}", "modulation"
-                    ] = dim_amps_z
+                    trials_df.loc[trials_df.trial_type == f"{dim_i}", "modulation"] = (
+                        dim_amps_z
+                    )
             design_df = pd.concat([onset_df[trials_df.columns], trials_df])
         return design_df
 
@@ -1120,13 +1122,16 @@ class PModCVCLIP(PModCV):
                     )
             elif self.rescale_runwise_regressors == "zscore":
                 for dim_i in range(self.ndims):
-                    trials_df.loc[
-                        trials_df.trial_type == f"{dim_i}", "modulation"
-                    ] = zscore(
-                        trials_df.loc[trials_df.trial_type == f"{dim_i}", "modulation"]
+                    trials_df.loc[trials_df.trial_type == f"{dim_i}", "modulation"] = (
+                        zscore(
+                            trials_df.loc[
+                                trials_df.trial_type == f"{dim_i}", "modulation"
+                            ]
+                        )
                     )
             design_df = pd.concat([onset_df[trials_df.columns], trials_df])
         return design_df
+
 
 def shuffle_and_correlate(perminds_fold, y_pred, y_true, metric="pearsonr"):
     assert metric in ("pearsonr", "r2")
@@ -1159,17 +1164,20 @@ class LinRegCVPermutation:
         self.n_jobs_fit = n_jobs_fit
         self.lr = LinearRegression(fit_intercept=fit_intercept, n_jobs=self.n_jobs_fit)
         self.perminds = None
-        assert metric in (
-            "pearsonr",
-            "r2",
-        ), f"metric {metric} must be in ('pearsonr', 'r2')"
+        allowed_metrics = ("pearsonr", "r2")
+        assert (
+            metric in allowed_metrics
+        ), f"metric {metric} must be in {allowed_metrics}"
         self.metric = metric
         self.perminds = None
 
     def calc_nsamples_per_fold(self, X):
-        n = X.shape[0] / self.nfolds
-        assert n.is_integer()
-        return int(n)
+        nsamples_per_fold = X.shape[0] / self.nfolds
+        if not nsamples_per_fold.is_integer():
+            warn(
+                f"number of samples {X.shape[0]} is not divisible by number of CV folds {self.nfolds}"
+            )
+        return int(nsamples_per_fold)
 
     def make_permutation_inds(self, nsamples_test):
         perminds = np.array(
@@ -1248,3 +1256,170 @@ class LinRegCVPermutation:
         else:
             pval = None
         return rtrue, pval
+
+
+class FracRidgeVoxelwise:
+    """
+    A class for performing voxel-wise fractional ridge regression on fMRI data.
+
+    This class encapsulates the functionality needed to tune, fit, and evaluate
+    fractional ridge regression models on a per-voxel basis in fMRI datasets. It
+    allows for tuning of the regularization parameter (alpha) using K-Fold
+    cross-validation, fitting the final model, and evaluating its performance.
+    Optionally, it can compute partial correlations between predicted and observed
+    responses after accounting for other predictors.
+
+    Parameters:
+    - n_splits (int): Number of splits for K-Fold cross-validation.
+    - test_size (float, optional): Proportion of the dataset to include in the test split.
+      If set to 0, both training and testing are performed on the entire dataset.
+      Defaults to 1/12.
+    - fracs (np.ndarray, optional): Array of fractional values to be used for ridge
+      regularization. Defaults to np.arange(0.01, 1.01, 0.01).
+    - run_pcorr (bool, optional): If True, computes partial correlations after model fitting.
+      Defaults to False.
+    - fracridge_kws (dict, optional): Additional keyword arguments to be passed to the
+      FracRidgeRegressor. Defaults to {"fit_intercept": True, "normalize": True}.
+
+    Methods:
+    - tune_alpha: Tunes the regularization parameter (alpha) for the model.
+    - fit_evaulate: Fits the model and evaluates its performance on test data.
+    - fit_pcorrs: Computes partial correlations between predicted and observed responses.
+    - tune_and_eval: A high-level method that combines tuning, fitting, and evaluating.
+
+    The class is designed to be used with fMRI data, where each voxel's response is predicted
+    from a set of features (e.g., stimulus properties). The fractional ridge approach allows
+    for fine-grained control over the amount of regularization applied to each voxel's model.
+    """
+
+    def __init__(
+        self,
+        n_splits,
+        test_size=0.0833,  # = 1/12
+        fracs=np.arange(0.01, 1.01, 0.01),
+        run_pcorr=False,
+        fracridge_kws={"fit_intercept": True, "normalize": True},
+    ):
+        self.n_splits = n_splits
+        self.fracs = fracs
+        self.nfracs = len(fracs)
+        self.fr = FracRidgeRegressor(fracs=fracs, **fracridge_kws)
+        self.test_size = test_size
+        self.run_pcorr = run_pcorr
+
+    def tune_alpha(self, X_train, y_train):
+        nvox = y_train.shape[1]
+        kfold = KFold(n_splits=self.n_splits, shuffle=False)
+        r2s = np.zeros((self.n_splits, self.nfracs, nvox))
+        for fold_i, (tune_inds, val_inds) in tqdm(
+            enumerate(kfold.split(X_train)),
+            desc="tuning regularization parameter",
+            total=self.n_splits,
+        ):
+            X_tune, y_tune = X_train[tune_inds], y_train[tune_inds]
+            X_val, y_val = X_train[val_inds], y_train[val_inds]
+            self.fr.fit(X_tune, y_tune)
+            pred = self.fr.predict(X_val)
+            for frac_i in range(self.nfracs):
+                # TODO: Input contains NaNs
+                r2s[fold_i, frac_i] = r2_score(
+                    np.nan_to_num(y_val),
+                    np.nan_to_num(pred[:, frac_i, :]),
+                    multioutput="raw_values",
+                )
+        r2_train = r2s.mean(0)
+        best_fracinds = np.argmax(r2_train, axis=0)
+        best_fracs = self.fracs[best_fracinds]
+        return best_fracs, r2_train
+
+    def fit_evaulate(
+        self,
+        X_train,
+        X_test,
+        y_train,
+        y_test,
+        best_fracs,
+    ):
+        nvox, ndims = y_train.shape[1], X_train.shape[1]
+        betas = np.zeros((nvox, ndims))
+        r2_test = np.zeros(nvox)
+        unique_fracs = np.unique(best_fracs)
+        for frac in tqdm(
+            unique_fracs,
+            desc="fitting final model (for each relevant frac parameter)",
+            total=len(unique_fracs),
+        ):
+            vox_is = np.where(best_fracs == frac)[0]
+            self.fr.fracs = frac
+            self.fr.fit(X_train, y_train[:, vox_is])
+            betas_ = self.fr.coef_.T
+            betas[vox_is] = betas_
+            pred = self.fr.predict(X_test)
+            r2_test[vox_is] = r2_score(
+                np.nan_to_num(y_test[:, vox_is]), 
+                np.nan_to_num(pred), 
+                multioutput="raw_values"
+            )
+        return betas, r2_test
+
+    def fit_pcorrs(
+        self,
+        X_train,
+        X_test,
+        y_train,
+        y_test,
+        best_fracs,
+    ):
+        # TODO: integrate with fit_evaluate, we don't have to do the voxel indexing twice.
+        print(
+            "\nDetermining partial correlations. Make sure your X and y are standardized.\n"
+        )
+        nvox, ndims = y_train.shape[1], X_train.shape[1]
+        pcorrs = np.zeros((nvox, ndims))
+        unique_fracs = np.unique(best_fracs)
+        for frac in tqdm(
+            unique_fracs,
+            desc="Voxel sets (depending on frac)",
+            total=len(unique_fracs),
+            leave=True,
+        ):
+            # select relevant voxels
+            self.fr.fracs = frac
+            vox_is = np.where(best_fracs == frac)[0]
+            y_train_thisfrac, y_test_thisfrac = y_train[:, vox_is], y_test[:, vox_is]
+            for pred_i in tqdm(
+                range(ndims), total=ndims, desc="predictors", leave=False
+            ):
+                # partial out other predictors from both this predictor and the response
+                X_train_nuisance, X_test_nuisance = np.delete(
+                    X_train, pred_i, axis=1
+                ), np.delete(X_test, pred_i, axis=1)
+                X_train_ = regress_out(
+                    X_train_nuisance, X_train[:, pred_i].reshape(-1, 1)
+                )
+                X_test_ = regress_out(X_test_nuisance, X_test[:, pred_i].reshape(-1, 1))
+                y_train_ = regress_out(X_train_nuisance, y_train_thisfrac)
+                y_test_ = regress_out(X_test_nuisance, y_test_thisfrac)
+                # fit model
+                self.fr.fit(X_train_, y_train_)
+                # determine correlation
+                pred = self.fr.predict(X_test_)
+                pcorrs[vox_is, pred_i] = pearsonr_nd(y_test_, pred)
+        return pcorrs
+
+    def tune_and_eval(self, X, y):
+        """Tune alpha and fit final model"""
+        if self.test_size:
+            X_train, X_test, y_train, y_test = train_test_split(
+                X, y, test_size=self.test_size, shuffle=False
+            )
+        else:
+            X_train, y_train = X, y
+            X_test, y_test = X, y
+        best_fracs, r2_train = self.tune_alpha(X_train, y_train)
+        betas, r2_test = self.fit_evaulate(X_train, X_test, y_train, y_test, best_fracs)
+        if self.run_pcorr:
+            pcorrs = self.fit_pcorrs(X_train, X_test, y_train, y_test, best_fracs)
+        else:
+            pcorrs = np.zeros(r2_test.shape)
+        return betas, r2_train, r2_test, best_fracs, pcorrs

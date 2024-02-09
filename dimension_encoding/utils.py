@@ -6,6 +6,7 @@ import scipy
 import requests
 import io
 import glob
+from scipy.stats import zscore
 from sklearn.linear_model import LinearRegression
 
 
@@ -223,5 +224,38 @@ def get_all_roi_files(sub, prf_roidir, floc_roidir) -> dict:
     rois = {**prf_rois, **cat_rois}
     return rois
 
+
 def get_bmask(sub, bidsroot):
-    return pjoin(bidsroot, 'derivatives', 'brainmasks', f'sub-{sub}__space-T1w_brainmask.nii.gz')
+    return pjoin(
+        bidsroot, "derivatives", "brainmasks", f"sub-{sub}_space-T1w_brainmask.nii.gz"
+    )
+
+
+def calc_nc(data: np.ndarray, n: int = None, ignore_nans=False):
+    """
+    Calculate the noise ceiling reported in the NSD paper (Allen et al., 2021)
+
+    Arguments:
+        data: np.ndarray
+            Should be shape (ntargets, nrepetitions, nobservations)
+        n: int or None
+            Number of trials averaged to calculate the noise ceiling. If None, n will be the number of repetitions.
+        ignore_nans: bool
+            If True, ignore nans in data normalization and variance calculation.
+    returns:
+        nc: np.ndarray of shape (ntargets)
+            Noise ceiling without considering trial averaging.
+    """
+    if not n:
+        n = data.shape[-2]
+    nanpol = 'omit' if ignore_nans else 'propagate'
+    normalized = zscore(data, axis=-1, nan_policy=nanpol)
+    if ignore_nans:
+        normalized = np.nan_to_num(normalized)
+        noisesd = np.sqrt(np.nanmean(np.nanvar(normalized, axis=-2, ddof=1), axis=-1))
+    else:
+        noisesd = np.sqrt(np.mean(np.var(normalized, axis=-2, ddof=1), axis=-1))
+    sigsd = np.sqrt(np.clip(1 - noisesd ** 2, 0., None))
+    ncsnr = sigsd / noisesd
+    nc = 100 * ((ncsnr ** 2) / ((ncsnr ** 2) + (1 / n)))
+    return nc

@@ -7,11 +7,17 @@ from tqdm import tqdm
 
 def load_shapecomps(shapecompdir=pjoin(pardir, "data", "ShapeComp")):
     # shapecompdir=pjoin(pardir, 'data', 'ShapeComp')
+    # fnames_shapecomp = np.loadtxt(
+    #     pjoin(shapecompdir, "THINGS_ShapeComp_fnames.txt"), dtype=str
+    # )
+    # shapecomps = pd.read_csv(
+    #     pjoin(shapecompdir, "THINGS_ShapeComp.csv"), header=None
+    # ).to_numpy()
     fnames_shapecomp = np.loadtxt(
-        pjoin(shapecompdir, "THINGS_ShapeComp_fnames.txt"), dtype=str
+        pjoin(shapecompdir, "THINGSfMRI_ShapeComp_fnames.txt"), dtype=str
     )
     shapecomps = pd.read_csv(
-        pjoin(shapecompdir, "THINGS_ShapeComp.csv"), header=None
+        pjoin(shapecompdir, "THINGSfMRI_ShapeComp.csv"), header=None
     ).to_numpy()
     return shapecomps, fnames_shapecomp
 

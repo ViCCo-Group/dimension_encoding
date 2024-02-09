@@ -78,6 +78,7 @@ def main(
     # filter fMRI trials based on shape model
     y = respdata.to_numpy().T[val_fmri_inds]
     stimdata_val = stimdata.iloc[val_fmri_inds]
+    print(f"{respdata.shape[1] - len(val_fmri_inds)} trials removed from fMRI data due to missing shape model")
 
     print("making dimension model")
     embedding, things_filenames, dim_labels = load_clip66_preds(args.clip66dir)
@@ -98,6 +99,7 @@ def main(
         y_no_shape = y
         y_no_dims = y
     # fit models
+    # 10-fold CV because not all fMRI trials have shape model and n is no longer divisible by 12
     nfolds = 1 if args.nocv else 12
     model = LinRegCVPermutation(nperm=0, metric=metric, nfolds=nfolds)
     print("Estimating unique variance for shapes")
