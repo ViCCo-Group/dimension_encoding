@@ -130,4 +130,5 @@ def plot_list_of_images(
     # separate loop disables all axes even if `len(img_paths)` is not divisible by `plot_ncols`
     for a in axs.flatten():
         a.axis("off")
+    plt.tight_layout()
     return fig

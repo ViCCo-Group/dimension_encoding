@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 from dimension_encoding.utils import load_clip66_preds
 from tqdm import tqdm
+import os
 
 
 def load_shapecomps(shapecompdir=pjoin(pardir, "data", "ShapeComp")):
@@ -23,22 +24,29 @@ def load_shapecomps(shapecompdir=pjoin(pardir, "data", "ShapeComp")):
 
 
 def make_shape_model(stimmeta, shapecomps, shapecomp_fnames):
-    shapecomp_fnames_nosuff = np.array([f.split(".")[0] for f in shapecomp_fnames])
-    fmri_stims_nosuff = stimmeta.stimulus.str.split(".").str[0].to_numpy()
-    val_fmri_inds = []
-    X = []
-    for fmri_i, stim in enumerate(fmri_stims_nosuff):
-        if stim not in shapecomp_fnames_nosuff:
+    shapecomp_exemplars = np.array(
+        [os.path.basename(f).split(".")[0] for f in shapecomp_fnames]
+    )
+    fmri_exemplars = stimmeta.stimulus.str.replace(".jpg", "").to_numpy()
+    val_trial_inds = []
+    excluded = []
+    design_matrix = []
+    for trial_i, fmri_exemplar in enumerate(fmri_exemplars):
+        if fmri_exemplar not in shapecomp_exemplars:
+            excluded.append(fmri_exemplar)
             continue
         else:
-            hits = np.where(shapecomp_fnames_nosuff == stim)[0]
+            hits = np.where(shapecomp_exemplars == fmri_exemplar)[0]
             assert len(hits) == 1
             shapecomp_i = hits[0]
-            val_fmri_inds.append(fmri_i)
-            X.append(shapecomps[shapecomp_i])
-    val_fmri_inds = np.array(val_fmri_inds)
-    X = np.array(X)
-    return val_fmri_inds, X
+            val_trial_inds.append(trial_i)
+            design_matrix.append(shapecomps[shapecomp_i])
+    val_trial_inds = np.array(val_trial_inds)
+    design_matrix = np.array(design_matrix)
+    shapecomp_model_info = dict(
+        design_matrix=design_matrix, val_trial_inds=val_trial_inds, excluded=excluded
+    )
+    return shapecomp_model_info
 
 
 def find_embedding_fmritrials(

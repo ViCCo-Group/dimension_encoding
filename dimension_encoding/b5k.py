@@ -34,7 +34,8 @@ class B5kLoader():
     def load_predicted_spose_dimensions(self):
         """Get predicted spose dimensions for all imagenet stimuli used in b5k"""
         fnames = np.loadtxt(pjoin(self.dimpreds_dir, 'file_names_bold5000-imagenet.txt'), dtype=str)
-        embedding = np.loadtxt(pjoin(self.dimpreds_dir, 'predictions_66d_ridge_OpenCLIP-RN50x64-openai_visual_bold5000-imagenet.txt'))
+        embedding = np.loadtxt(pjoin(self.dimpreds_dir, 'predictions_66d_ridge_clip-RN50_visual_bold5000-imagenet.txt'))
+        # embedding = np.loadtxt(pjoin(self.dimpreds_dir, 'predictions_66d_ridge_OpenCLIP-RN50x64-openai_visual_bold5000-imagenet.txt'))
         return embedding, fnames
     
     def _make_braininds(self, subj):
