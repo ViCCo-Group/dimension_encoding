@@ -28,7 +28,7 @@ def parse_arguments():
         "--bidsroot",
         type=str,
         help="path to bids root directory",
-        default="../data/bids",
+        default="../data/thingsfmri/bids",
     )
     parser.add_argument(
         "--adjust_y",
@@ -74,14 +74,16 @@ def main(
 
     print("making shape model")
     shapecomps, shapecomp_fnames = load_shapecomps(args.shapecompdir)
-    val_fmri_inds, X_shape = make_shape_model(stimdata, shapecomps, shapecomp_fnames)
+    shapecomp_model_info = make_shape_model(stimdata, shapecomps, shapecomp_fnames)
+    X_shape = shapecomp_model_info['design_matrix']
+    val_inds = shapecomp_model_info['val_trial_inds']
     # filter fMRI trials based on shape model
-    y = respdata.to_numpy().T[val_fmri_inds]
-    stimdata_val = stimdata.iloc[val_fmri_inds]
-    print(f"{respdata.shape[1] - len(val_fmri_inds)} trials removed from fMRI data due to missing shape model")
+    y = respdata.to_numpy().T[val_inds]
+    stimdata_val = stimdata.iloc[val_inds]
+    print(f"{respdata.shape[1] - len(val_inds)} trials removed from fMRI data due to missing shape model")
 
     print("making dimension model")
-    embedding, things_filenames, dim_labels = load_clip66_preds(args.clip66dir)
+    # embedding, things_filenames, dim_labels = load_clip66_preds(args.clip66dir)
     trials = find_embedding_fmritrials(stimdata_val, args.clip66dir)
     X_dims = trials.drop(columns=["imagename"], inplace=False).to_numpy()
 
