@@ -4,3 +4,8 @@ venv/
 *brain_inds.nii.gz
 data/b5k
 *__pycache__*
+**.pyc
+data/b5k_reliability_data/
+data/thingsfmri/
+plots/
+results/
