@@ -11,6 +11,7 @@ from dimension_encoding.utils import (
     load_singletrial_data,
     load_category_df,
     load_clip66_preds,
+    load_facesbodies,
     regress_out,
     get_bmask,
     neg2zero,
@@ -68,6 +69,15 @@ def make_category_model(stimdata, allcats, l2s, verbose=False):
     return X_cat
 
 
+def make_facesbodies_model(facesbodies_df, stimdata):
+    X_facesbodies = np.zeros((len(stimdata), 2))
+    for trial_i, trial_img in tqdm(enumerate(stimdata.stimulus), total=len(stimdata)):
+        rows = facesbodies_df.loc[facesbodies_df.image_name == trial_img]
+        assert len(rows) > 0, f"Could not find image {trial_img} in faces/bodies labels"
+        X_facesbodies[rows.index] = rows[["face", "body"]].to_numpy()
+    return X_facesbodies
+
+
 def make_dimensions_model(
     stimdata, embedding, things_filenames, dim_labels, allcats, X_cat, verbose=False
 ):
@@ -107,7 +117,7 @@ def parse_arguments():
         "--bidsroot",
         type=str,
         help="path to bids root directory",
-        default="../data/bids",
+        default="../data/thingsfmri/bids",
     )
     parser.add_argument(
         "--adjust_y",
@@ -120,6 +130,24 @@ def parse_arguments():
         help="whether to use within-sample instead of cross-validated r-squared. Turns this into plain regression.",
         action="store_true",
         default=False,
+    )
+    parser.add_argument(
+        "--include_faces_bodies",
+        help='Whether to include manual face and body labels into the category model. Will be loaded from command line argument "facesbodiesdir"',
+        action="store_true",
+        default=False,
+    )
+    parser.add_argument(
+        "--only_faces_bodies",
+        help="If true, use only manual face and body labels as category model.",
+        action="store_true",
+        default=False,
+    )
+    parser.add_argument(
+        "--facesbodiesdir",
+        help="Where to load the face and body labels from. Only applies if --include_faces_bodies is specified",
+        default="../data/facesbodies",
+        type=str,
     )
     parser.add_argument(
         "--outdir",
@@ -169,8 +197,18 @@ def main(
     X_dims = make_dimensions_model(
         stimdata, embedding, things_filenames, dim_labels, allcats, X_cat
     )
-    # combined model
-    X_comb = np.concatenate([X_dims, X_cat], axis=1)
+    if args.only_faces_bodies:
+        print("Only using faces and bodies as category model")
+        # in this case, we use the same dimension model as in all other circumstances, i.e.
+        # selected dimensions based on diagnosticity for superordinare categories
+        facesbodies = load_facesbodies(args.facesbodiesdir)
+        X_cat = make_facesbodies_model(facesbodies, stimdata)
+    if args.include_faces_bodies:
+        print("Including manual face and body labels into superordinate category model")
+        facesbodies = load_facesbodies(args.facesbodiesdir)
+        X_facesbodies = make_facesbodies_model(facesbodies, stimdata)
+        X_cat = np.hstack([X_cat, X_facesbodies])
+    X_comb = np.concatenate([X_dims, X_cat], axis=1)  # combined model
     print("orthogonalizing X")
     X_cat_r = regress_out(X_dims, X_cat, dtype=np.double)
     X_dims_r = regress_out(X_cat, X_dims, dtype=np.double)
@@ -212,3 +250,4 @@ def main(
 if __name__ == "__main__":
     args = parse_arguments()
     main(args)
+

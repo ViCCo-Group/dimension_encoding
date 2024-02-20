@@ -116,6 +116,14 @@ def load_category_df(
     #     df = df.drop(columns=redundant_column)
     return df
 
+def load_facesbodies(facesbodiesdir):
+    bodies_df = pd.read_csv(pjoin(facesbodiesdir, 'BODYPART.csv'))
+    faces_df = pd.read_csv(pjoin(facesbodiesdir, 'FACE.csv'))
+    faces_df['face'] = faces_df['label'].astype(int)
+    faces_df['body'] = bodies_df['label'].astype(int)
+    facesbodies = faces_df[['image_name', 'face', 'body']]
+    return facesbodies
+
 
 def neg2zero(x: np.array):
     x[x < 0] = 0
