@@ -6,6 +6,7 @@ from nilearn.masking import apply_mask, unmask
 from tqdm import tqdm
 import pandas as pd
 from dimension_encoding.utils import calc_nc
+import glob
 
 class B5kLoader():
     
@@ -18,7 +19,7 @@ class B5kLoader():
             "CSI1":15, 'CSI2':15, 'CSI3':15, "CSI4":9
         }
         self.brain_inds_dir = self.b5k_dir.replace("b5k", "b5k_braininds")
-        self.dimpreds_dir = self.b5k_dir.replace("b5k", "b5k_imagenet_dimensions")
+        self.dimpreds_dir = self.b5k_dir.replace("b5k", "b5k_predicted_dimensions")
     
     def get_responses_filenames(self, subj):
         nses = self.n_sess_per_subject[subj]
@@ -31,11 +32,15 @@ class B5kLoader():
     def get_braininds_file(self, subj):
         return pjoin(self.brain_inds_dir, f"{subj}_brain_inds.nii.gz")
     
-    def load_predicted_spose_dimensions(self):
-        """Get predicted spose dimensions for all imagenet stimuli used in b5k"""
-        fnames = np.loadtxt(pjoin(self.dimpreds_dir, 'file_names_bold5000-imagenet.txt'), dtype=str)
-        embedding = np.loadtxt(pjoin(self.dimpreds_dir, 'predictions_66d_ridge_clip-RN50_visual_bold5000-imagenet.txt'))
-        # embedding = np.loadtxt(pjoin(self.dimpreds_dir, 'predictions_66d_ridge_OpenCLIP-RN50x64-openai_visual_bold5000-imagenet.txt'))
+    def load_predicted_spose_dimensions(self, image_sets=['imagenet', 'coco']):
+        """Get predicted spose dimensions for stimuli used in b5k"""
+        fn_list = []
+        emb_list = []
+        for image_set in image_sets:
+            fn_list.append(np.loadtxt(glob.glob(pjoin(self.dimpreds_dir, image_set, 'file_names*.txt'))[0], dtype=str))
+            emb_list.append(np.loadtxt(glob.glob(pjoin(self.dimpreds_dir, image_set, 'predictions*.txt'))[0]))
+        fnames = np.hstack(fn_list)
+        embedding = np.vstack(emb_list)
         return embedding, fnames
     
     def _make_braininds(self, subj):
@@ -48,7 +53,7 @@ class B5kLoader():
         responses_4d = np.concatenate(arrs, axis=3)
         nan_inds = np.any(np.isnan(responses_4d), axis=-1)  # 3d
         brain_inds = np.logical_not(nan_inds)  # 3d
-        _, brain_inds = self.load_responses(subj, return_brain_inds=True)
+        _, brain_inds = self.load_responses(subj)
         brain_inds_img = new_img_like(load_img(self.get_responses_filenames(subj)[0]), brain_inds)
         braininds_f = self.get_braininds_file(subj)
         brain_inds_img.to_filename(braininds_f)
@@ -69,14 +74,14 @@ class B5kLoader():
     def load_stimdata(self, subj):
         return np.loadtxt(pjoin(self.b5k_dir, f"{subj}_imgnames.txt"), dtype='str')
     
-    def make_dimensions_model(self, subj):
+    def make_dimensions_model(self, subj, image_sets=['imagenet', 'coco']):
         """
         Make a design matrix for the predicted spose dimensions, 
         also return trial indices for filtering the relevant trial responses 
         and the stimulus names
         """
         stimdata = self.load_stimdata(subj)
-        embedding, fnames = self.load_predicted_spose_dimensions()
+        embedding, fnames = self.load_predicted_spose_dimensions(image_sets=image_sets)
         trial_is = []
         X_dims = []
         for stim_i, stim in enumerate(stimdata):

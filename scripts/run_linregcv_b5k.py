@@ -24,6 +24,13 @@ def parse_arguments():
         default="../data/b5k/",
     )
     parser.add_argument(
+        "--image_sets",
+        type=list,
+        help="Which image sets to include",
+        choices=['imagenet', 'coco'],
+        default=['imagenet', 'coco']
+    )
+    parser.add_argument(
         "--zscore_X",
         action="store_true",
         default=True,
@@ -44,7 +51,7 @@ def main(args):
     os.makedirs(sub_outdir, exist_ok=True)
     dl = B5kLoader(b5k_dir=args.b5k_dir)
     print("loading dimensions")
-    X_dims, trial_is, _ = dl.make_dimensions_model(args.subject)
+    X_dims, trial_is, _ = dl.make_dimensions_model(args.subject, args.image_sets)
     if args.zscore_X:
         print("zscoring X")
         X_dims = zscore(X_dims, axis=0)

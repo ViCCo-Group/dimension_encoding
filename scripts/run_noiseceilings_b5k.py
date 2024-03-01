@@ -4,7 +4,7 @@ from tqdm import tqdm
 
 if __name__=="__main__":
     dl = B5kLoader()
-    for subj_int in tqdm(range(1,4), total=3):
+    for subj_int in tqdm(range(1,5), total=4):
         subject = f"CSI{subj_int}"
         responses = dl.load_responses(subject)
         stimdata = dl.load_stimdata(subject)
