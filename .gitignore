@@ -8,6 +8,8 @@ dimension_encoding/__pycache__**
 **.pyc
 data/b5k_reliability_data/
 data/thingsfmri/
+data/nsd
+data/nsd_predicted_dimensions/
 plots/
 results/
 **allimages/*.png
