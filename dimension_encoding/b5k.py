@@ -74,26 +74,39 @@ class B5kLoader():
     def load_stimdata(self, subj):
         return np.loadtxt(pjoin(self.b5k_dir, f"{subj}_imgnames.txt"), dtype='str')
     
+    def average_over_repeats(self, stimdata, responses):
+        avg_responses = []
+        avg_stimdata = np.unique(stimdata)
+        for stimname in tqdm(avg_stimdata, desc="averaging over repeats"):
+            trial_is = np.where(stimdata == stimname)[0]
+            assert len(trial_is) > 0
+            avg_responses.append(responses[trial_is].mean(axis=0))
+        avg_responses = np.array(avg_responses)
+        return avg_stimdata, avg_responses
+    
     def make_dimensions_model(self, subj, image_sets=['imagenet', 'coco']):
         """
         Make a design matrix for the predicted spose dimensions, 
         also return trial indices for filtering the relevant trial responses 
         and the stimulus names
         """
-        stimdata = self.load_stimdata(subj)
         embedding, fnames = self.load_predicted_spose_dimensions(image_sets=image_sets)
+        stimdata = self.load_stimdata(subj)
+        print("Loading fMRI responses")
+        responses = self.load_responses(subj)
+        stimdata, responses = self.average_over_repeats(stimdata, responses)
         trial_is = []
-        X_dims = []
+        X = []
         for stim_i, stim in enumerate(stimdata):
             found_is = np.where(fnames == stim)[0]
             if len(found_is) == 0:
                 continue
             trial_is.append(stim_i)
-            X_dims.append(embedding[found_is[0]])
-        X_dims = np.array(X_dims)
+            X.append(embedding[found_is[0]])
+        X = np.array(X)
         trial_is = np.array(trial_is)
-        stims = stimdata[trial_is]
-        return X_dims, trial_is, stims
+        y = responses[trial_is]
+        return X, y
     
     
 def compute_noise_ceiling_b5k(responses, stimdata, select_trials_with_nreps=4):

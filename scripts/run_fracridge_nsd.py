@@ -1,10 +1,17 @@
+"""
+Run an encoding model of our behavioral dimensions on the BOLD 5000 imagenet data.
+This script uses fracrional ridge regression for obtaining regularized and more stable 
+dimension tuning maps.
+"""
+
+from os.path import join as pjoin
 import os
 import argparse
+import numpy as np
 from scipy.stats import zscore
-from nilearn.masking import unmask
-from os.path import join as pjoin
 from dimension_encoding.nsd import NsdLoader
-from dimension_encoding.glm import LinRegCVPermutation
+from dimension_encoding.glm import FracRidgeVoxelwise
+
 
 
 def parse_arguments():
@@ -12,18 +19,18 @@ def parse_arguments():
         description="Replicate our behavioral dimensions brain fit on the NSD dataset"
     )
     parser.add_argument(
-        "--subject", type=str, help="NSD subject id (e.g. 01)", required=True
+        "--subject", type=str, help="NSD subject id", required=True
     )
     parser.add_argument(
         "--outdir",
         type=str,
         help="path to output directory",
-        default="../results/nsd_linereg_cvperm",
+        default="../results/nsd_fracridge",
     )
     parser.add_argument(
         "--data_dir",
         type=str,
-        help="path to project data directory",
+        help="path to b5k directory",
         default="../data",
     )
     parser.add_argument(
@@ -38,19 +45,15 @@ def parse_arguments():
         default=True,
         help="zscore responses",
     )
-    parser.add_argument(
-        "--njobs",
-        type=int,
-        default=10,
-        help="number of jobs to use for loading the session betas",
-    )
-    return parser.parse_args()
+    args = parser.parse_args()
+    return args
 
 
 def main(args):
     sub_outdir = pjoin(args.outdir, f"sub-{args.subject}")
     os.makedirs(sub_outdir, exist_ok=True)
     dl = NsdLoader(data_dir=args.data_dir)
+    bmask = dl.get_bmask_file(args.subject)
     x_dims, y = dl.make_dimensions_model(args.subject)
     if args.zscore_X:
         print("zscoring X")
@@ -59,22 +62,25 @@ def main(args):
     if args.zscore_y:
         print("zscoring y")
         y = zscore(y, axis=0)
-    print("Estimate prediction accuracy")
-    model = LinRegCVPermutation(nfolds=10, nperm=0)
-    r, pval = model.fit_and_permute(x_dims, y)
-    bmask = dl.get_bmask_file(args.subject)
-    rimg = unmask(r, bmask)
-    rimg.to_filename(pjoin(sub_outdir, f"sub-{args.subject}_r.nii.gz"))
-    print("save prediction accuracy to disk")
-    if pval:
-        pimg = unmask(pval, bmask)
-        pimg.to_filename(pjoin(sub_outdir, f"sub-{args.subject}_p.nii.gz"))
-    print("fit again to obtain voxel-wise dimension weights")
-    model.lr.fit(x_dims, y)
+    if args.zscore_X:
+        print("zscoring X")
+        x_dims = zscore(x_dims, axis=0)
+    print("Start ridge regression")
+    fr = FracRidgeVoxelwise(
+        n_splits=10,
+        test_size=0.0, 
+        fracs=np.arange(0.01, 1.01, 0.01),
+        run_pcorr=False,
+    )
+    betas, _, _, best_fracs, _ = fr.tune_and_eval(x_dims, y)
     print("save betas")
-    for dim_i, betas in enumerate(model.lr.coef_.T):
-        betas_img = unmask(betas, bmask)
+    for dim_i, b_dim in enumerate(betas.T):
+        betas_img = unmask(b_dim, bmask)
         betas_img.to_filename(pjoin(sub_outdir, f"betas_dim-{dim_i+1}.nii.gz"))
+    print("save regularization parameters")
+    fracs_img = unmask(best_fracs, bmask)
+    fracs_img.to_filename(pjoin(sub_outdir, f"best_fracs.nii.gz"))
+    print("Done")
     return None
 
 

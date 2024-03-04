@@ -160,19 +160,31 @@ class NsdLoader:
         trialinfo["fname_index"] = trialinfo["73KID"] - 1
         return trialinfo
 
+    def average_over_repeats(self, betas, trialinfo):
+        avgbetas = []
+        fname_index_avgdata = []
+        for group_i, rows in tqdm(
+            trialinfo.groupby("fname_index"),
+            total=len(trialinfo["fname_index"].unique()),
+            desc="averaging over repeats",
+        ):
+            trial_is = rows.index
+            avgbetas.append(betas[trial_is].mean(0))
+            fname_index_avgdata.append(rows["fname_index"].values[0])
+        avgbetas = np.stack(avgbetas, axis=0)
+        trialinfo_avgbetas = pd.DataFrame(
+            {"fname_index": np.array(fname_index_avgdata)}
+        )
+        return avgbetas, trialinfo_avgbetas
+
     def make_dimensions_model(self, subject):
-        """
-        Constructs a model using dimensions data matched to trial information for a given subject.
-
-        Parameters:
-        - subject (int): The subject number.
-
-        Returns:
-        - numpy.ndarray: An array representing the model, with rows for trials and columns for dimensions.
-        """
+        # get embedding and trial info
         embedding, fnames = self.load_predicted_spose_dimensions()
         embedding_indices = nsd_fnames_to_indices(fnames)
         trialinfo = self.load_trialinfo(subject)
+        # average over repeats
+        betas = self.load_betas(subject)
+        y, trialinfo = self.average_over_repeats(betas, trialinfo)
         X = np.zeros((len(trialinfo), embedding.shape[1]))
         for trial_i in tqdm(
             range(len(trialinfo)), total=len(trialinfo), desc="making dimensions model"
@@ -181,4 +193,4 @@ class NsdLoader:
             match_inds = np.where(trial_row["fname_index"] == embedding_indices)[0]
             assert len(match_inds) >= 1
             X[trial_i] = embedding[match_inds]
-        return X
+        return X, y

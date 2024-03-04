@@ -55,14 +55,12 @@ def main(args):
     dl = B5kLoader(b5k_dir=args.b5k_dir)
     
     print("loading dimensions")
-    X_dims, trial_is, _ = dl.make_dimensions_model(args.subject)
+    X_dims, y = dl.make_dimensions_model(args.subject)
     if args.zscore_X:
         print("zscoring X")
         X_dims = zscore(X_dims, axis=0)
     
     print("loading responses")
-    responses = dl.load_responses(args.subject)
-    y = responses[trial_is]
     if args.zscore_y:
         print("zscoring y")
         y = zscore(y, axis=0)
