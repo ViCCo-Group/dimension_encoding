@@ -61,6 +61,7 @@ def main(args):
         y = zscore(y, axis=0)
     print("Estimate prediction accuracy")
     model = LinRegCVPermutation(nfolds=7, nperm=0)
+    import ipdb;ipdb.set_trace()
     r, pval = model.fit_and_permute(X_dims, y)
     rimg = dl.array_to_volume(r, args.subject)
     rimg.to_filename(pjoin(sub_outdir, f"sub-{args.subject}_r.nii.gz"))

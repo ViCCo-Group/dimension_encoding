@@ -81,6 +81,7 @@ def main(
     y = respdata.to_numpy().T[val_inds]
     stimdata_val = stimdata.iloc[val_inds]
     print(f"{respdata.shape[1] - len(val_inds)} trials removed from fMRI data due to missing shape model")
+    import ipdb;ipdb.set_trace()
 
     print("making dimension model")
     # embedding, things_filenames, dim_labels = load_clip66_preds(args.clip66dir)
