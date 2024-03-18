@@ -12,4 +12,5 @@ data/nsd
 data/nsd_predicted_dimensions/
 plots/
 results/
+notebooks
 **allimages/*.png
